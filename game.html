@@ -6,7 +6,62 @@
 <script>
 const canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d'),hud=document.querySelector('#hud'),start=document.querySelector('#start'),notice=document.querySelector('#notice');
 const W=canvas.width,H=canvas.height,keys=new Set(),held=new Map(),tau=2*Math.PI;
-</script><script src="arena-art.js"></script><script>
+// Original pixel sprites for the rooftop arena. Each cell is one pixel.
+const palette = {o:'#102039',h:'#382c42',s:'#c78362',l:'#ffd3a2',b:'#347699',t:'#43e1c5',w:'#f4f4d8',p:'#34375c',n:'#ef9a34',g:'#91e760',r:'#f05c64',y:'#ffda76'};
+const runner = [
+'     hhhh     ',
+'    hhhhhho   ',
+'   httttttto  ',
+'    slslss    ',
+'    sllhls    ',
+'     slls     ',
+'    bttttb    ',
+'   sttwwttso  ',
+'   lbtwwtbll  ',
+'    bttttb    ',
+'     pppp     ',
+'     pp pp    '];
+const burger = [
+'    nnnnnn    ',
+'  nnnynnnynn  ',
+' nnynnnynnnnn ',
+' nnnnnnnnnnnn ',
+' gggggggggggg ',
+'  rrrrwwwrrr  ',
+' hhhhhoohhhhh ',
+'  yyyyyyyyyy  ',
+'  nnnnnnnnnn  '];
+function pixels(rows,x,y,size){
+ rows.forEach((row,i)=>[...row].forEach((c,j)=>{if(palette[c]){ctx.fillStyle=palette[c];ctx.fillRect(Math.round(x+j*size),Math.round(y+i*size),size,size)}}));
+}
+function hero(x,y,scale,walking=false){
+ const step=walking?Math.sin(elapsed*17)*1.7:0;
+ ctx.save();ctx.translate(Math.round(x),Math.round(y));ctx.scale(scale,scale);
+ ctx.fillStyle='#0b153777';ctx.beginPath();ctx.ellipse(0,12,12,3,0,0,tau);ctx.fill();
+ pixels(runner,-14,-17,2);
+ for(const side of [-1,1]){const leg=side*step;ctx.fillStyle=palette.p;ctx.fillRect(side*4-2,5+leg,4,6);ctx.fillStyle=palette.w;ctx.fillRect(side*5-2,10+leg,6,3)}
+ ctx.restore();
+}
+function enemy(f){
+ const z=f.boss?4:2;pixels(burger,f.x-7*z,f.y-5*z+Math.sin(elapsed*5+f.phase)*1.4,z);
+ if(f.boss){ctx.fillStyle='#ffe36e';ctx.fillRect(f.x-10,f.y-26,20,4);for(const x of [-10,-2,6])ctx.fillRect(f.x+x,f.y-30,4,6)}
+}
+function makeCourt(){
+ const layer=document.createElement('canvas');layer.width=W;layer.height=H;const c=layer.getContext('2d');
+ const sky=c.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#39345c');sky.addColorStop(.38,'#825071');sky.addColorStop(1,'#283d55');c.fillStyle=sky;c.fillRect(0,0,W,H);
+ c.fillStyle='#ffc684';c.beginPath();c.arc(610,52,36,0,tau);c.fill();
+ for(let i=0;i<32;i++){const x=i*27,y=23+(i*43%58);c.fillStyle=i%2?'#222740':'#2b2c48';c.fillRect(x,y,26,95-y);for(let j=0;j<3;j++)for(let k=y+6;k<85;k+=10){c.fillStyle=(i+j+k)%4===0?'#e8ae81':'#56506c';c.fillRect(x+3+j*7,k,3,4)}}
+ c.fillStyle='#1c3842';c.fillRect(0,96,W,H-96);
+ for(let y=97;y<H;y+=18){c.fillStyle=(y%36===7)?'#24434a':'#234049';c.fillRect(0,y,W,17);for(let x=(y%36===7)?0:30;x<W;x+=60){c.fillStyle='#294850';c.fillRect(x,y,1,17)}}
+ c.strokeStyle='#557775';c.lineWidth=2;c.strokeRect(28,119,W-56,H-147);c.beginPath();c.arc(W/2,295,69,0,tau);c.stroke();c.fillRect(W/2,119,1,H-147);
+ for(let x=0;x<W;x+=27){c.fillStyle='#243348';c.fillRect(x,79,4,22)}c.fillStyle='#70cab5';c.fillRect(0,82,W,2);c.fillStyle='#152e3a';c.fillRect(0,97,W,8);
+ return layer;
+}
+const court=makeCourt();
+let sparks=[];
+function burst(x,y,color){for(let i=0;i<9;i++){const a=i*tau/9; sparks.push({x,y,vx:Math.cos(a)*75,vy:Math.sin(a)*75,color,life:.32})}}
+function drawSparks(){for(const s of sparks){ctx.globalAlpha=Math.min(1,s.life*4);ctx.fillStyle=s.color;ctx.fillRect(s.x,s.y,3,3)}ctx.globalAlpha=1}
+
 let dashTime=0,dashWait=0,heading={x:1,y:0},walking=false;
 function dash(){if(mode!=='play'||dashWait>0)return;dashTime=.18;dashWait=3;invul=Math.max(invul,.22);burst(p.x,p.y,'#8fffe0')}
 document.querySelector('#dash').onclick=dash;
